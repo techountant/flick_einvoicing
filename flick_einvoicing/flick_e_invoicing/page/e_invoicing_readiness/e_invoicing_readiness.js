@@ -74,7 +74,9 @@ class Readiness {
 		const form_color = { Pending: "blue", Submitted: "orange", Applied: "green", Cancelled: "gray" };
 		const all = rows.length && rows.every((r) => this.selected.has(r.party));
 
-		const body = rows.map((r) => {
+		// Drawing every row of a big customer list freezes the browser; search narrows past the cap.
+		const LIMIT = 500;
+		const body = rows.slice(0, LIMIT).map((r) => {
 			const link = `<a href="/app/${frappe.router.slug(this.party_type)}/${encodeURIComponent(r.party)}">${esc(r.party_name || r.party)}</a>`;
 			const cells = [
 				customer ? `<td><input type="checkbox" data-pick="${esc(r.party)}" ${this.selected.has(r.party) ? "checked" : ""}></td>` : "",
@@ -120,7 +122,8 @@ class Readiness {
 				${customer ? `<span class="ml-auto"><b>${this.selected.size}</b> ${__("selected")}</span>` : ""}
 			</div>
 			<div class="flick-table-wrap"><table class="table table-sm flick-table"><thead><tr>${head}</tr></thead>
-			<tbody>${body || `<tr><td colspan="10" class="text-muted text-center p-4">${__("Nothing to show.")}</td></tr>`}</tbody></table></div>`);
+			<tbody>${body || `<tr><td colspan="10" class="text-muted text-center p-4">${__("Nothing to show.")}</td></tr>`}</tbody></table></div>
+			${rows.length > LIMIT ? `<div class="text-muted small p-2">${__("Showing {0} of {1}. Search or filter to narrow the list.", [LIMIT, rows.length])}</div>` : ""}`);
 		this.send_btn.text(this.selected.size ? __("Send Data Form ({0})", [this.selected.size]) : __("Send Data Form"));
 	}
 

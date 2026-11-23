@@ -20,7 +20,7 @@ def data(party_type, filters):
 	fields = ["name", "tax_id", "einvoice_peppol_id", "einvoice_trade_licence", "einvoice_trade_licence_authority"]
 	if party_type == "Customer":
 		fields += ["customer_name as party_name", "einvoice_routing", "einvoice_party_identifier",
-			"einvoice_free_zone", "einvoice_phase", "einvoice_go_live_date", "einvoice_contact_email"]
+			"einvoice_free_zone", "einvoice_phase", "einvoice_go_live_date", "einvoice_contact_email", "email_id"]
 	else:
 		fields += ["supplier_name as party_name", "einvoice_self_billing"]
 	conditions = {"disabled": 0}
@@ -32,11 +32,13 @@ def data(party_type, filters):
 		conditions["supplier_group"] = filters.supplier_group
 	parties = frappe.get_list(party_type, filters=conditions, fields=fields, order_by="name", limit_page_length=0)
 
+	# With thousands of parties an IN (...) list of every name is slower than reading the whole
+	# (small) request table, so filter by name only when one party was asked for.
 	requests = {}
 	if party_type == "Customer" and parties:
 		for r in frappe.get_all(
 			"Customer Data Request",
-			filters={"customer": ["in", [p.name for p in parties]]},
+			filters={"customer": filters.party} if filters.party else {},
 			fields=["name", "customer", "status", "creation", "submitted_on", "sent_on", "send_count"],
 			order_by="creation desc",
 		):
@@ -46,7 +48,7 @@ def data(party_type, filters):
 	if party_type == "Customer" and parties:
 		from flick_einvoicing.data_form import contact_emails
 
-		emails = contact_emails([p.name for p in parties])
+		emails = contact_emails([p.name for p in parties], rows=parties)
 
 	rows = []
 	for p in parties:

@@ -369,40 +369,49 @@ def email_template() -> dict:
 	return {"subject": form.get("email_subject") or DEFAULT_SUBJECT, "body": form.get("email_body") or DEFAULT_BODY}
 
 
-def contact_emails(customers: list[str]) -> dict[str, tuple[str, str]]:
+# Above this many customers, reading every customer contact link beats an IN (...) list of names.
+BULK = 200
+
+
+def contact_emails(customers: list[str], rows: list[dict] | None = None) -> dict[str, tuple[str, str]]:
 	"""Each customer's email to send to and where it came from: the E-Invoicing Contact Email,
-	else the customer's primary contact (ERPNext's email_id), else any contact linked to it."""
+	else the customer's primary contact (ERPNext's email_id), else any contact linked to it.
+	`rows` are the customers already read with einvoice_contact_email and email_id, to skip a re-read."""
 	if not customers:
 		return {}
 	out = {}
-	for c in frappe.get_all(
-		"Customer", filters={"name": ["in", customers]}, fields=["name", "einvoice_contact_email", "email_id"]
-	):
+	if rows is None:
+		rows = frappe.get_all(
+			"Customer", filters={"name": ["in", customers]}, fields=["name", "einvoice_contact_email", "email_id"]
+		)
+	for c in rows:
 		for value, source in ((c.einvoice_contact_email, "einvoice"), (c.email_id, "primary")):
 			if value and validate_email_address(value.strip()):
 				out[c.name] = (value.strip(), source)
 				break
-	rest = [c for c in customers if c not in out]
+	rest = {c for c in customers if c not in out}
 	if rest:
 		Contact = frappe.qb.DocType("Contact")
 		Link = frappe.qb.DocType("Dynamic Link")
-		rows = (
+		where = (
+			(Link.parenttype == "Contact")
+			& (Link.link_doctype == "Customer")
+			& (Contact.email_id.isnotnull())
+			& (Contact.email_id != "")
+		)
+		if len(rest) <= BULK:
+			where &= Link.link_name.isin(list(rest))
+		links = (
 			frappe.qb.from_(Contact)
 			.join(Link)
 			.on(Link.parent == Contact.name)
 			.select(Link.link_name, Contact.email_id)
-			.where(
-				(Link.parenttype == "Contact")
-				& (Link.link_doctype == "Customer")
-				& (Link.link_name.isin(rest))
-				& (Contact.email_id.isnotnull())
-				& (Contact.email_id != "")
-			)
+			.where(where)
 			.orderby(Contact.is_primary_contact, order=frappe.qb.desc)
 			.orderby(Contact.creation)
 		).run(as_dict=True)
-		for r in rows:
-			if r.link_name not in out and validate_email_address(r.email_id.strip()):
+		for r in links:
+			if r.link_name in rest and r.link_name not in out and validate_email_address(r.email_id.strip()):
 				out[r.link_name] = (r.email_id.strip(), "contact")
 	return out
 
