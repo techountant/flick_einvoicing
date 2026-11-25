@@ -24,7 +24,6 @@ if (!flick_einvoicing.invoice_form_registered) {
 			text = `<span class="text-success">${__("Buyer Peppol ID {0} is registered on Peppol{1}.", [id, name])}</span>`;
 		} else if (p.is_registered === false) {
 			text = `<span class="text-warning">${__("Buyer Peppol ID {0} is not registered on Peppol. Check it with the customer before submitting.", [id])}</span>`;
-			if (p.pre_production) text += `<br><small>${__("Pre-production lookups ask the production network, so test participants always show as not registered.")}</small>`;
 		} else {
 			text = `<span class="text-muted">${__("Could not look up buyer Peppol ID {0} on the network.", [id])}</span>`;
 		}
