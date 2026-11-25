@@ -9,8 +9,28 @@ if (!flick_einvoicing.party_form_registered) {
 		frappe.xcall("flick_einvoicing.readiness.party_status", { doctype: frm.doctype, name: frm.doc.name }).then((r) => {
 			if (!r || !r.applies) return;
 			if (r.missing.length) {
-				const list = r.missing.map((m) => frappe.utils.escape_html(m)).join(", ");
+				// Each item links to what fixes it: the field on this form, or the address.
+				const fixes = r.fixes || r.missing.map((label) => ({ label }));
+				const list = fixes
+					.map((f, i) =>
+						f.field || f.address || f.new_address
+							? `<a href="#" class="einvoice-fix" data-idx="${i}" style="text-decoration: underline">${frappe.utils.escape_html(f.label)}</a>`
+							: frappe.utils.escape_html(f.label)
+					)
+					.join(", ");
 				frm.dashboard.add_comment(`${__("Not ready to e-invoice, missing")}: ${list}`, "orange", true);
+				frm.dashboard.wrapper.find("a.einvoice-fix").on("click", (e) => {
+					e.preventDefault();
+					const f = fixes[$(e.currentTarget).data("idx")];
+					if (f.field) {
+						frm.scroll_to_field(f.field);
+					} else if (f.address) {
+						frappe.set_route("Form", "Address", f.address);
+					} else {
+						frappe.dynamic_link = { doc: frm.doc, fieldname: "name", doctype: frm.doctype };
+						frappe.new_doc("Address");
+					}
+				});
 			} else {
 				frm.dashboard.add_comment(__("Ready to e-invoice"), "green", true);
 			}

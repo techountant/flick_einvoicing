@@ -146,7 +146,32 @@ def party_status(doctype: str, name: str) -> dict:
 	missing = check(doctype, party)
 	routing = (party.get("einvoice_routing") or codes.ROUTING_PEPPOL) if doctype == "Customer" else codes.ROUTING_PEPPOL
 	missing += address_gaps(doctype, name, abroad_ok=routing != codes.ROUTING_PEPPOL)
-	return {"applies": True, "missing": missing}
+	from frappe.contacts.doctype.address.address import get_default_address
+
+	address = get_default_address(doctype, name)
+	return {
+		"applies": True,
+		"missing": missing,
+		"fixes": [{"label": m, **fix_target(m, address)} for m in missing],
+	}
+
+
+def fix_target(item: str, address: str | None) -> dict:
+	"""Where on the party form, or which record, puts a missing item right."""
+	if item.startswith(_("Address outside the UAE")):
+		return {"field": "einvoice_routing"}
+	if item.startswith(_("Address")):
+		return {"address": address} if address else {"new_address": 1}
+	for prefix, field in (
+		(_("Peppol ID"), "einvoice_peppol_id"),
+		(_("TRN"), "tax_id"),
+		(_("Buyer Identifier"), "einvoice_party_identifier"),
+		(_("Trade Licence"), "einvoice_trade_licence"),
+		(_("Licensing Authority"), "einvoice_trade_licence_authority"),
+	):
+		if item.startswith(prefix):
+			return {"field": field}
+	return {}
 
 
 @frappe.whitelist()
