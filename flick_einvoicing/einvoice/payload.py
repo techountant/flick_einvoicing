@@ -775,6 +775,14 @@ class _Builder:
 			peppol_id = codes.DEEMED_SUPPLY_ENDPOINT  # reported only, not exchanged
 		elif routing in codes.ROUTING_ENDPOINTS:
 			peppol_id = codes.ROUTING_ENDPOINTS[routing]
+			if routing == codes.ROUTING_EXPORT and not inv.get("einvoice_is_export"):
+				# PINT-AE §1.5.3: 0235:9900000099 stands only for an export (transaction flag Export).
+				self.problem(
+					f"{doctype} {name} is routed as an export buyer not on Peppol, which Flick accepts only "
+					"on an export: tick Export on the E-Invoicing tab, or change the customer's E-Invoice "
+					"Routing.",
+					(doctype, name),
+				)
 		else:
 			peppol_id = cstr(party.get("einvoice_peppol_id")).strip()
 			if not peppol_id:
