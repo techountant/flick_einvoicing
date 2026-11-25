@@ -514,12 +514,14 @@ def _received_banner(invoice) -> dict | None:
 		wait = (
 			_(
 				"Row {0} waits on {1} until you choose our item. Choosing it here keeps the supplier's price; "
-				"elsewhere, ERPNext puts in our item's own price instead."
+				"elsewhere, ERPNext puts in our item's own price instead. Submitting remembers the choice "
+				"for the supplier's next invoice."
 			)
 			if len(waiting) == 1
 			else _(
 				"Rows {0} wait on {1} until you choose our item. Choosing it here keeps the supplier's price; "
-				"elsewhere, ERPNext puts in our item's own price instead."
+				"elsewhere, ERPNext puts in our item's own price instead. Submitting remembers the choices "
+				"for the supplier's next invoice."
 			)
 		)
 		found.insert(0, wait.format(", ".join(str(row.idx) for row in waiting), waiting[0].item_code))

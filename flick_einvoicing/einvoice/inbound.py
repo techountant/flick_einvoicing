@@ -347,7 +347,8 @@ def review(record) -> dict:
 		)
 		problems.append(
 			f"{count} none of our items (line {', '.join(map(str, unmatched))}): {where}. "
-			"To match them next time, add the supplier's code to our item under Supplier Items."
+			"Submitting the purchase invoice remembers the item chosen for each supplier code, so the "
+			"next invoice matches by itself."
 			if supplier
 			else f"Items are matched once the supplier exists: {len(lines)} line{'s' if len(lines) != 1 else ''} to check."
 		)
