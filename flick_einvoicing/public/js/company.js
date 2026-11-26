@@ -6,10 +6,29 @@ frappe.ui.form.on("Company", {
 			__("Supplier Letter"),
 			() =>
 				frappe.call({ method: "flick_einvoicing.supplier_letter.check", args: { company: frm.doc.name } }).then(({ message: missing }) => {
-					const open = () =>
+					const print = (letterhead) =>
 						window.open(
-							`/printview?doctype=Company&name=${encodeURIComponent(frm.doc.name)}&format=${encodeURIComponent("Supplier E-Invoicing Letter")}&no_letterhead=0`,
+							`/printview?doctype=Company&name=${encodeURIComponent(frm.doc.name)}&format=${encodeURIComponent(
+								"Supplier E-Invoicing Letter"
+							)}&no_letterhead=${letterhead ? 0 : 1}${letterhead ? `&letterhead=${encodeURIComponent(letterhead)}` : ""}`,
 							"_blank"
+						);
+					const open = () =>
+						frappe.db.get_value("Letter Head", { is_default: 1, disabled: 0 }, "name").then(({ message }) =>
+							frappe.prompt(
+								{
+									fieldname: "letterhead",
+									fieldtype: "Link",
+									options: "Letter Head",
+									label: __("Letter Head"),
+									default: message?.name,
+									get_query: () => ({ filters: { disabled: 0 } }),
+									description: __("Leave empty to print without a letterhead."),
+								},
+								(v) => print(v.letterhead),
+								__("Supplier Letter"),
+								__("Print")
+							)
 						);
 					if (!missing.length) return open();
 					frappe.confirm(
